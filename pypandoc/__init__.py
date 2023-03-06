@@ -173,10 +173,7 @@ def convert_file(source_file:Union[list, str, Path, Generator], to:str, format:U
 
 def _identify_path(source) -> bool:
     if isinstance(source, list):
-        for single_source in source:
-            if not _identify_path(single_source):
-                return False
-        return True
+        return all(_identify_path(single_source) for single_source in source)
     is_path = False
     try:
         is_path = os.path.exists(source)
@@ -194,7 +191,7 @@ def _identify_path(source) -> bool:
         except:  # noqa
             # still false
             pass
-    
+
     if not is_path:
         try:
             # check if it's an URL
@@ -243,8 +240,7 @@ def _as_unicode(source:any, encoding:str) -> any:
 
 
 def _identify_input_type(source:any, format:str, encoding:str='utf-8'):
-    path = _identify_path(source)
-    if path:
+    if path := _identify_path(source):
         format = _identify_format_from_path(source, format)
         input_type = 'path'
     else:
@@ -262,7 +258,7 @@ def normalize_format(fmt):
     fmt = formats.get(fmt, fmt)
     # rst format can have extensions
     if fmt[:4] == "rest":
-        fmt = "rst" + fmt[4:]
+        fmt = f"rst{fmt[4:]}"
     return fmt
 
 
@@ -278,8 +274,8 @@ def _validate_formats(format, to, outputfile):
 
     if _get_base_format(format) not in from_formats:
         raise RuntimeError(
-            'Invalid input format! Got "%s" but expected one of these: %s' % (
-                _get_base_format(format), ', '.join(from_formats)))
+            f"""Invalid input format! Got "{_get_base_format(format)}" but expected one of these: {', '.join(from_formats)}"""
+        )
 
     base_to_format = _get_base_format(to)
 
@@ -289,15 +285,15 @@ def _validate_formats(format, to, outputfile):
             base_to_format != "pdf" and  # pdf is handled later # noqa: E127
             file_extension != '.lua'):
         raise RuntimeError(
-            'Invalid output format! Got %s but expected one of these: %s' % (
-                base_to_format, ', '.join(to_formats)))
+            f"Invalid output format! Got {base_to_format} but expected one of these: {', '.join(to_formats)}"
+        )
 
     # list from https://github.com/jgm/pandoc/blob/master/pandoc.hs
     # `[...] where binaries = ["odt","docx","epub","epub3"] [...]`
     # pdf has the same restriction
     if base_to_format in ["odt", "docx", "epub", "epub3", "pdf"] and not outputfile:
         raise RuntimeError(
-            'Output to %s only works by using a outputfile.' % base_to_format
+            f'Output to {base_to_format} only works by using a outputfile.'
         )
 
     if base_to_format == "pdf":
@@ -308,7 +304,7 @@ def _validate_formats(format, to, outputfile):
         # to is not allowed to contain pdf, but must point to latex
         # it's also not allowed to contain extensions according to the docs
         if to != base_to_format:
-            raise RuntimeError("PDF output can't contain any extensions: %s" % to)
+            raise RuntimeError(f"PDF output can't contain any extensions: {to}")
         to = "latex"
 
     return format, to
@@ -333,22 +329,17 @@ def _convert_input(source, format, input_type, to, extra_args=(),
     logger.debug("Identifying input type...")
     string_input = input_type == 'string'
     if not string_input:
-        if isinstance(source, str):
-            input_file = [source]
-        else:
-            input_file = source
+        input_file = [source] if isinstance(source, str) else source
     else:
         input_file = []
-    
-    input_file = sorted(input_file)
-    args = [__pandoc_path, '--from=' + format]
 
-    args.append('--to=' + to)
+    input_file = sorted(input_file)
+    args = [__pandoc_path, f'--from={format}', f'--to={to}']
 
     args += input_file
 
     if outputfile:
-        args.append("--output=" + str(outputfile))
+        args.append(f"--output={str(outputfile)}")
 
     if sandbox:
         if ensure_pandoc_minimal_version(2,15): # sandbox was introduced in pandoc 2.15, so only add if we are using 2.15 or above.
@@ -363,7 +354,10 @@ def _convert_input(source, format, input_type, to, extra_args=(),
     if filters is not None:
         if isinstance(filters, string_types):
             filters = filters.split()
-        f = ['--lua-filter=' + x if x.endswith(".lua") else '--filter=' + x for x in filters]
+        f = [
+            f'--lua-filter={x}' if x.endswith(".lua") else f'--filter={x}'
+            for x in filters
+        ]
         args.extend(f)
 
     # To get access to pandoc-citeproc when we use a included copy of pandoc,
@@ -390,10 +384,9 @@ def _convert_input(source, format, input_type, to, extra_args=(),
         os.chdir(old_wd)
 
     # something else than 'None' indicates that the process already terminated
-    if not (p.returncode is None):
+    if p.returncode is not None:
         raise RuntimeError(
-            'Pandoc died with exitcode "%s" before receiving input: %s' % (p.returncode,
-                                                                           p.stderr.read())
+            f'Pandoc died with exitcode "{p.returncode}" before receiving input: {p.stderr.read()}'
         )
 
     if string_input:
@@ -407,14 +400,16 @@ def _convert_input(source, format, input_type, to, extra_args=(),
     except OSError:
         # this is happening only on Py2.6 when pandoc dies before reading all
         # the input. We treat that the same as when we exit with an error...
-        raise RuntimeError('Pandoc died with exitcode "%s" during conversion.' % (p.returncode))
+        raise RuntimeError(
+            f'Pandoc died with exitcode "{p.returncode}" during conversion.'
+        )
 
     try:
         stdout = stdout.decode('utf-8')
     except UnicodeDecodeError:
         # this shouldn't happen: pandoc more or less guarantees that the output is utf-8!
         raise RuntimeError('Pandoc output was not utf-8.')
-           
+
     try:
         stderr = stderr.decode('utf-8')
     except UnicodeDecodeError:
@@ -424,9 +419,9 @@ def _convert_input(source, format, input_type, to, extra_args=(),
     # check that pandoc returned successfully
     if p.returncode != 0:
         raise RuntimeError(
-            'Pandoc died with exitcode "%s" during conversion: %s' % (p.returncode, stderr)
+            f'Pandoc died with exitcode "{p.returncode}" during conversion: {stderr}'
         )
-    
+
     # if there is output on stderr, process it and send to logger
     if stderr:
         for level, msg in _classify_pandoc_logging(stderr):
@@ -633,9 +628,9 @@ def ensure_pandoc_minimal_version(major:int, minor:int=0) -> bool:
     :rtype: bool
     """
     version = [int(x) for x in get_pandoc_version().split(".")]
-    if version[0] > int(major): # if we have pandoc2 but major is request to be 1
+    if version[0] > major: # if we have pandoc2 but major is request to be 1
         return True
-    return version[0] >= int(major) and version[1] >= int(minor)
+    return version[0] >= major and version[1] >= minor
     
 
 
@@ -650,16 +645,16 @@ def ensure_pandoc_maximal_version(major:int, minor:int=9999) -> bool:
     :rtype: bool
     """
     version = [int(x) for x in get_pandoc_version().split(".")]
-    if version[0] < int(major): # if we have pandoc1 but major is request to be 2
+    if version[0] < major: # if we have pandoc1 but major is request to be 2
         return True
-    return version[0] <= int(major) and version[1] <= int(minor)
+    return version[0] <= major and version[1] <= minor
 
 
 def _ensure_pandoc_path() -> None:
     global __pandoc_path
-    
+
     _check_log_handler()
-    
+
     if __pandoc_path is None:
         included_pandoc = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                        "files", "pandoc")
@@ -705,8 +700,7 @@ def _ensure_pandoc_path() -> None:
                 # we can't use that path...
                 if os.path.exists(path):
                     # path exist but is not useable -> not executable?
-                    log_msg = ("Found {}, but not using it because of an "
-                               "error:".format(path))
+                    log_msg = f"Found {path}, but not using it because of an error:"
                     logger.exception(log_msg)
                 continue
             version = [int(x) for x in version_string.split(".")]
@@ -719,37 +713,37 @@ def _ensure_pandoc_path() -> None:
                 __pandoc_path = path
                 curr_version = version
 
-        if __pandoc_path is None:
-            # Only print hints if requested
-            if os.path.exists('/usr/local/bin/brew'):
-                logger.info(textwrap.dedent("""\
+    if __pandoc_path is None:
+        # Only print hints if requested
+        if os.path.exists('/usr/local/bin/brew'):
+            logger.info(textwrap.dedent("""\
                     Maybe try:
 
                         brew install pandoc
                 """))
-            elif os.path.exists('/usr/bin/apt-get'):
-                logger.info(textwrap.dedent("""\
+        elif os.path.exists('/usr/bin/apt-get'):
+            logger.info(textwrap.dedent("""\
                     Maybe try:
 
                         sudo apt-get install pandoc
                 """))
-            elif os.path.exists('/usr/bin/yum'):
-                logger.info(textwrap.dedent("""\
+        elif os.path.exists('/usr/bin/yum'):
+            logger.info(textwrap.dedent("""\
                     Maybe try:
 
                     sudo yum install pandoc
                 """))
-            logger.info(textwrap.dedent("""\
+        logger.info(textwrap.dedent("""\
                 See http://johnmacfarlane.net/pandoc/installing.html
                 for installation options
             """))
-            logger.info(textwrap.dedent("""\
+        logger.info(textwrap.dedent("""\
                 ---------------------------------------------------------------
 
             """))
-            raise OSError("No pandoc was found: either install pandoc and add it\n"
-                          "to your PATH or or call pypandoc.download_pandoc(...) or\n"
-                          "install pypandoc wheels with included pandoc.")
+        raise OSError("No pandoc was found: either install pandoc and add it\n"
+                      "to your PATH or or call pypandoc.download_pandoc(...) or\n"
+                      "install pypandoc wheels with included pandoc.")
 
 
 def ensure_pandoc_installed(url:Union[str, None]=None, 

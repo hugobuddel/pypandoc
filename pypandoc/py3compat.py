@@ -29,16 +29,12 @@ def _encode(u, encoding=None):
 
 
 def cast_unicode(s, encoding=None):
-    if isinstance(s, bytes):
-        return _decode(s, encoding)
-    return s
+    return _decode(s, encoding) if isinstance(s, bytes) else s
 
 
 def cast_bytes(s, encoding=None):
     # bytes == str on py2.7 -> always encode on py2
-    if not isinstance(s, bytes):
-        return _encode(s, encoding)
-    return s
+    return s if isinstance(s, bytes) else _encode(s, encoding)
 
 
 if sys.version_info[0] >= 3:

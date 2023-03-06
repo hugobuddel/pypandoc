@@ -50,15 +50,17 @@ def _get_pandoc_urls(version="latest"):
         version_url_frags = response.url.split("/")
         version = version_url_frags[-1]
     except urllib.error.HTTPError as e:
-        raise RuntimeError("Invalid pandoc version {}.".format(version))
-        return
+        raise RuntimeError(f"Invalid pandoc version {version}.")
     # read the HTML content
     response = urlopen(f"https://github.com/jgm/pandoc/releases/expanded_assets/{version}")
     content = response.read()
     # regex for the binaries
     uname = platform.uname()[4]
     processor_architecture = "arm" if uname.startswith("arm") or uname.startswith("aarch") else "amd"
-    regex = re.compile(r"/jgm/pandoc/releases/download/.*(?:"+processor_architecture+"|x86|mac).*\.(?:msi|deb|pkg)")
+    regex = re.compile(
+        f"/jgm/pandoc/releases/download/.*(?:{processor_architecture}"
+        + "|x86|mac).*\.(?:msi|deb|pkg)"
+    )
     # a list of urls to the binaries
     pandoc_urls_list = regex.findall(content.decode("utf-8"))
     # actual pandoc version
@@ -162,7 +164,7 @@ def _handle_win32(filename, targetfolder):
 
     tempfolder = tempfile.mkdtemp()
 
-    cmd = ["msiexec", "/a", filename, "/qb", "TARGETDIR=%s" % (tempfolder)]
+    cmd = ["msiexec", "/a", filename, "/qb", f"TARGETDIR={tempfolder}"]
     # if only 3.5 is supported, should be `run(..., check=True)`
     subprocess.check_call(cmd)
 
@@ -261,7 +263,7 @@ def download_pandoc(url:Union[str, None]=None,
     except OSError:
         pass  # dir already exists...
 
-    unpack = globals().get("_handle_" + pf)
+    unpack = globals().get(f"_handle_{pf}")
     assert unpack is not None, "Can't handle download, only Linux, Windows and OS X are supported."
 
     unpack(filename, targetfolder)
