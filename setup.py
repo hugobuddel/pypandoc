@@ -9,18 +9,18 @@ with io.open('README.md', encoding="utf-8") as f:
 
 module = pypandoc
 setup(
-    name = 'pypandoc',
-    version = module.__version__,
-    url = pypandoc.__url__,
-    license = pypandoc.__license__,
-    description = pypandoc.__description__,
-    long_description = long_description,
+    name='pypandoc',
+    version=module.__version__,
+    url=module.__url__,
+    license=module.__license__,
+    description=module.__description__,
+    long_description=long_description,
     long_description_content_type='text/markdown',
-    author = module.__author__.encode('utf8'),
-    author_email = pypandoc.__author_email__,
-    packages = ['pypandoc'],
-    python_requires=pypandoc.__python_requires__,
-    setup_requires = pypandoc.__setup_requires__,
-    classifiers=pypandoc.__classifiers__,
-    test_suite = 'tests'
+    author=module.__author__.encode('utf8'),
+    author_email=module.__author_email__,
+    packages=['pypandoc'],
+    python_requires=module.__python_requires__,
+    setup_requires=module.__setup_requires__,
+    classifiers=module.__classifiers__,
+    test_suite='tests',
 )

@@ -59,7 +59,7 @@ def is_list_like(arg):
 @contextlib.contextmanager
 def assert_produces_warning(expected_warning=Warning, filter_level="always",
                             clear=None, check_stacklevel=True):
-    """
+  """
     Context manager for running code that expects to raise (or not raise)
     warnings.  Checks that code raises the expected warning and only the
     expected warning. Pass ``False`` or ``None`` to check that it does *not*
@@ -82,49 +82,49 @@ def assert_produces_warning(expected_warning=Warning, filter_level="always",
     AssertionError: Did not see expected warning of class 'UserWarning'.
     ..warn:: This is *not* thread-safe.
     """
-    with warnings.catch_warnings(record=True) as w:
+  with warnings.catch_warnings(record=True) as w:
 
-        if clear is not None:
-            # make sure that we are clearing these warnings
-            # if they have happened before
-            # to guarantee that we will catch them
-            if not is_list_like(clear):
-                clear = [clear]
-            for m in clear:
-                try:
-                    m.__warningregistry__.clear()
-                except Exception as e:
+    if clear is not None:
+      # make sure that we are clearing these warnings
+      # if they have happened before
+      # to guarantee that we will catch them
+      if not is_list_like(clear):
+          clear = [clear]
+      for m in clear:
+        try:
+          m.__warningregistry__.clear()
+        except Exception as e:
                     # ignore...
-                    print(str(e))
+          print(e)
 
-        saw_warning = False
-        warnings.simplefilter(filter_level)
-        yield w
-        extra_warnings = []
+    saw_warning = False
+    warnings.simplefilter(filter_level)
+    yield w
+    extra_warnings = []
 
-        for actual_warning in w:
-            if (expected_warning and issubclass(actual_warning.category,
-                                                expected_warning)):
-                saw_warning = True
+    for actual_warning in w:
+        if (expected_warning and issubclass(actual_warning.category,
+                                            expected_warning)):
+            saw_warning = True
 
-                if check_stacklevel and issubclass(actual_warning.category,
-                                                   (FutureWarning,
-                                                    DeprecationWarning)):
-                    from inspect import getframeinfo, stack
-                    caller = getframeinfo(stack()[2][0])
-                    msg = (("Warning not set with correct stacklevel. " +
-                            "File where warning is raised: {0} != {1}. " +
-                            "Warning message: {2}").format(
-                        actual_warning.filename, caller.filename,
-                        actual_warning.message))
-                    assert actual_warning.filename == caller.filename, msg
-            else:
-                extra_warnings.append(actual_warning.category.__name__)
-        if expected_warning:
-            assert saw_warning, ("Did not see expected warning of class %r."
-                                 % expected_warning.__name__)
-        assert not extra_warnings, ("Caused unexpected warning(s): %r."
-                                    % extra_warnings)
+            if check_stacklevel and issubclass(actual_warning.category,
+                                               (FutureWarning,
+                                                DeprecationWarning)):
+                from inspect import getframeinfo, stack
+                caller = getframeinfo(stack()[2][0])
+                msg = (("Warning not set with correct stacklevel. " +
+                        "File where warning is raised: {0} != {1}. " +
+                        "Warning message: {2}").format(
+                    actual_warning.filename, caller.filename,
+                    actual_warning.message))
+                assert actual_warning.filename == caller.filename, msg
+        else:
+            extra_warnings.append(actual_warning.category.__name__)
+    if expected_warning:
+        assert saw_warning, ("Did not see expected warning of class %r."
+                             % expected_warning.__name__)
+    assert not extra_warnings, ("Caused unexpected warning(s): %r."
+                                % extra_warnings)
 
 
 class TestPypandoc(unittest.TestCase):
@@ -153,11 +153,11 @@ class TestPypandoc(unittest.TestCase):
         self.assertTrue("markdown" in outputs)
 
     def test_get_pandoc_version(self):
-        assert "HOME" in os.environ, "No HOME set, this will error..."
-        version = pypandoc.get_pandoc_version()
-        self.assertTrue(isinstance(version, pypandoc.string_types))
-        major = int(version.split(".")[0])
-        self.assertTrue(major in [0, 1, 2, 3])
+      assert "HOME" in os.environ, "No HOME set, this will error..."
+      version = pypandoc.get_pandoc_version()
+      self.assertTrue(isinstance(version, pypandoc.string_types))
+      major = int(version.split(".")[0])
+      self.assertTrue(major in {0, 1, 2, 3})
 
     def test_ensure_pandoc_minimal_version(self):
         assert "HOME" in os.environ, "No HOME set, this will error..."
